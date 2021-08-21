@@ -1153,7 +1153,7 @@ app.post(
         const timestamp = new Date(cond.timestamp * 1000);
         return [jiaIsuUUID, timestamp, cond.is_sitting, cond.condition, cond.message]
       });
-      await db.query(
+      db.query(
           "INSERT INTO `isu_condition`" +
             "	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`)" +
             "	VALUES ?",
