@@ -152,6 +152,9 @@ app.use(
 app.set("cert", readFileSync(jiaJWTSigningKeyPath));
 app.set("etag", false);
 
+// in memory cache
+let conditionModifiedMap: any = {};
+
 class ErrorWithStatus extends Error {
   public status: number;
   constructor(status: number, message: string) {
@@ -854,7 +857,6 @@ interface GetIsuConditionsQuery extends qs.ParsedQs {
   condition_level: string;
 }
 
-let conditionsMap: any = {}
 
 // GET /api/condition/:jia_isu_uuid
 // ISUのコンディションを取得
@@ -883,6 +885,11 @@ app.get(
       }
 
       const jiaIsuUUID = req.params.jia_isu_uuid;
+      if (!conditionModifiedMap[jiaIsuUUID]) {
+        console.log('@@@@@@@@@@@@@@@@@@');
+        console.log('not modified');
+        return res.status(304).end();
+      }
 
       const endTimeInt = parseInt(req.query.end_time, 10);
       if (isNaN(endTimeInt)) {
@@ -905,10 +912,10 @@ app.get(
       }
 
       const [[row]] = await db.query<(RowDataPacket & { name: string })[]>(
-        "SELECT name FROM `isu` WHERE `jia_isu_uuid` = ? AND `jia_user_id` = ?",
-        [jiaIsuUUID, jiaUserId]
+        "SELECT name, jia_user_id FROM `isu` WHERE `jia_isu_uuid` = ?",
+        [jiaIsuUUID]
       );
-      if (!row) {
+      if (!row || row.jia_user_id !== jiaUserId) {
         return res.status(404).type("text").send("not found: isu");
       }
 
@@ -922,6 +929,7 @@ app.get(
           conditionLimit,
           row.name
         );
+      conditionModifiedMap[jiaIsuUUID] = false;
       res.status(200).json(conditionResponse);
     } catch (err) {
       console.error(`db error: ${err}`);
@@ -1155,21 +1163,14 @@ app.post(
         const timestamp = new Date(cond.timestamp * 1000);
         return [jiaIsuUUID, timestamp, cond.is_sitting, cond.condition, cond.message]
       });
-      let cache = conditionsMap[jiaIsuUUID] ?? [];
-      cache = cache.concat(
-        request.map(cond => {
-          const timestamp = new Date(cond.timestamp * 1000);
-          return [timestamp, cond.is_sitting, cond.condition, cond.message]
-        })
-      );
-      conditionsMap[jiaIsuUUID] = cache;
-      console.log(conditionsMap);
       db.query(
           "INSERT INTO `isu_condition`" +
             "	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`)" +
             "	VALUES ?",
           [values]
-      )
+      ).then(_ => {
+        conditionModifiedMap[jiaIsuUUID] = true;
+      })
 
       return res.status(202).send();
     } catch (err) {
