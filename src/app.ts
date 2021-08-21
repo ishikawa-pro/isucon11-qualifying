@@ -854,6 +854,8 @@ interface GetIsuConditionsQuery extends qs.ParsedQs {
   condition_level: string;
 }
 
+let conditionsMap: any = {}
+
 // GET /api/condition/:jia_isu_uuid
 // ISUのコンディションを取得
 app.get(
@@ -1153,6 +1155,15 @@ app.post(
         const timestamp = new Date(cond.timestamp * 1000);
         return [jiaIsuUUID, timestamp, cond.is_sitting, cond.condition, cond.message]
       });
+      let cache = conditionsMap[jiaIsuUUID] ?? [];
+      cache = cache.concat(
+        request.map(cond => {
+          const timestamp = new Date(cond.timestamp * 1000);
+          return [timestamp, cond.is_sitting, cond.condition, cond.message]
+        })
+      );
+      conditionsMap[jiaIsuUUID] = cache;
+      console.log(conditionsMap);
       db.query(
           "INSERT INTO `isu_condition`" +
             "	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`)" +
