@@ -360,13 +360,20 @@ app.get("/api/isu", async (req, res) => {
       "SELECT * FROM `isu` WHERE `jia_user_id` = ? ORDER BY `id` DESC",
       [jiaUserId]
     );
-    const responseList: Array<GetIsuListResponse> = [];
+    const _isuList = [];
     for (const isu of isuList) {
-      let foundLastCondition = true;
+      _isuList.push(isu);
+    }
+    const responseList: Array<GetIsuListResponse> = [];
+    const lastConditionAndIsuList = await Promise.all(_isuList.map(async isu => {
       const [[lastCondition]] = await db.query<IsuCondition[]>(
         "SELECT * FROM `isu_condition` WHERE `jia_isu_uuid` = ? ORDER BY `timestamp` DESC LIMIT 1",
         [isu.jia_isu_uuid]
       );
+      return [lastCondition, isu];
+    }));
+    for (const [lastCondition, isu] of lastConditionAndIsuList) {
+      let foundLastCondition = true;
       if (!lastCondition) {
         foundLastCondition = false;
       }
