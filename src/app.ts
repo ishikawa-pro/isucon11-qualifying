@@ -646,14 +646,11 @@ app.get(
       const date = new Date(datetime * 1000);
       date.setMinutes(0, 0, 0);
 
-      await db.beginTransaction();
-
       const [[{ cnt }]] = await db.query<(RowDataPacket & { cnt: number })[]>(
         "SELECT COUNT(*) AS `cnt` FROM `isu` WHERE `jia_user_id` = ? AND `jia_isu_uuid` = ?",
         [jiaUserId, jiaIsuUUID]
       );
       if (cnt === 0) {
-        await db.rollback();
         return res.status(404).type("text").send("not found: isu");
       }
       const [getIsuGraphResponse, e] = await generateIsuGraphResponse(
@@ -663,16 +660,12 @@ app.get(
       );
       if (e) {
         console.error(e);
-        await db.rollback();
         return res.status(500).send();
       }
-
-      await db.commit();
 
       return res.status(200).json(getIsuGraphResponse);
     } catch (err) {
       console.error(`db error: ${err}`);
-      await db.rollback();
       return res.status(500).send();
     } finally {
       db.release();
