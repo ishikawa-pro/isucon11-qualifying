@@ -1149,15 +1149,15 @@ app.post(
       if (request.some(cond => !isValidConditionFormat(cond.condition))) {
         return res.status(400).type("text").send("bad request body");
       }
-      const payload = request.map(cond => {
+      const values = request.map(cond => {
         const timestamp = new Date(cond.timestamp * 1000);
-        return `(${jiaIsuUUID}, ${timestamp}, ${cond.is_sitting}, ${cond.condition}, ${cond.message})`
-      }).join();
+        return [jiaIsuUUID, timestamp, cond.is_sitting, cond.condition, cond.message]
+      });
       await db.query(
           "INSERT INTO `isu_condition`" +
             "	(`jia_isu_uuid`, `timestamp`, `is_sitting`, `condition`, `message`)" +
-            "	VALUES" +
-          payload
+            "	VALUES ?",
+          [values]
       )
 
       return res.status(202).send();

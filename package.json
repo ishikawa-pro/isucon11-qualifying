@@ -5,7 +5,7 @@
   "main": "build/app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon --watch src --exec ts-node src/app.ts",
+    "dev": "POST_ISUCONDITION_TARGET_BASE_URL='https://isucondition-1.t.isucon.dev' nodemon --watch src --exec ts-node src/app.ts",
     "lint": "eslint ./src --ext .ts",
     "build": "tsc --build ./tsconfig.json",
     "start": "node ./build/app.js"
